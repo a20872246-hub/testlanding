@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>구글 시트 연동 테스트</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            max-width: 600px;
+            margin: 50px auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #6B46C1;
+            margin-bottom: 20px;
+        }
+        .form-group {
+            margin-bottom: 15px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #333;
+        }
+        input, textarea {
+            width: 100%;
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        textarea {
+            min-height: 100px;
+            resize: vertical;
+        }
+        button {
+            background: #6B46C1;
+            color: white;
+            padding: 12px 30px;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            width: 100%;
+        }
+        button:hover {
+            background: #5a3aa0;
+        }
+        button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 4px;
+            display: none;
+        }
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+        .log {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 4px;
+            font-family: monospace;
+            font-size: 12px;
+            max-height: 300px;
+            overflow-y: auto;
+        }
+        .log-entry {
+            margin: 5px 0;
+            padding: 5px;
+        }
+        .log-entry.info { color: #0066cc; }
+        .log-entry.success { color: #28a745; }
+        .log-entry.error { color: #dc3545; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🧪 구글 시트 연동 테스트</h1>
+
+        <div style="background: #fff3cd; border: 1px solid #ffc107; border-radius: 4px; padding: 15px; margin-bottom: 20px;">
+            <strong>⚠️ 중요:</strong> 아래 URL이 최신 배포 URL인지 확인하세요!<br>
+            현재 URL: <code id="currentUrl" style="color: #d63384; font-size: 12px;"></code>
+            <script>
+                document.getElementById('currentUrl').textContent = GOOGLE_SCRIPT_URL;
+            </script>
+        </div>
+
+        <form id="testForm">
+            <div class="form-group">
+                <label for="name">이름 *</label>
+                <input type="text" id="name" name="name" required>
+            </div>
+
+            <div class="form-group">
+                <label for="phone">연락처 *</label>
+                <input type="tel" id="phone" name="phone" required>
+            </div>
+
+            <div class="form-group">
+                <label for="email">이메일 *</label>
+                <input type="email" id="email" name="email" required>
+            </div>
+
+            <div class="form-group">
+                <label for="dogBreed">강아지 품종/나이 *</label>
+                <input type="text" id="dogBreed" name="dogBreed" required>
+            </div>
+
+            <div class="form-group">
+                <label for="issue">문제 행동 설명 *</label>
+                <textarea id="issue" name="issue" required></textarea>
+            </div>
+
+            <button type="submit" id="submitBtn">테스트 전송</button>
+        </form>
+
+        <div id="status" class="status"></div>
+
+        <div class="log">
+            <strong>로그:</strong>
+            <div id="logContainer"></div>
+        </div>
+    </div>
+
+    <script>
+        const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybrlI_nwI5Q6uVUyCJmhkQP8PpCPAeyyiNwhQn2Wo0UduraMCBcHbpQytz_FXjj0nW/exec';
+
+        const logContainer = document.getElementById('logContainer');
+        const statusDiv = document.getElementById('status');
+
+        function addLog(message, type = 'info') {
+            const entry = document.createElement('div');
+            entry.className = `log-entry ${type}`;
+            entry.textContent = `[${new Date().toLocaleTimeString()}] ${message}`;
+            logContainer.appendChild(entry);
+            logContainer.scrollTop = logContainer.scrollHeight;
+        }
+
+        function showStatus(message, isError = false) {
+            statusDiv.textContent = message;
+            statusDiv.className = `status ${isError ? 'error' : 'success'}`;
+            statusDiv.style.display = 'block';
+        }
+
+        document.getElementById('testForm').addEventListener('submit', async (e) => {
+            e.preventDefault();
+
+            const submitBtn = document.getElementById('submitBtn');
+            submitBtn.disabled = true;
+            submitBtn.textContent = '전송 중...';
+
+            statusDiv.style.display = 'none';
+            addLog('폼 제출 시작', 'info');
+
+            const formData = {
+                name: document.getElementById('name').value,
+                phone: document.getElementById('phone').value,
+                email: document.getElementById('email').value,
+                dogBreed: document.getElementById('dogBreed').value,
+                issue: document.getElementById('issue').value,
+                timestamp: new Date().toISOString()
+            };
+
+            addLog('전송 데이터: ' + JSON.stringify(formData, null, 2), 'info');
+
+            try {
+                addLog('Google Apps Script로 전송 중...', 'info');
+
+                const response = await fetch(GOOGLE_SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(formData)
+                });
+
+                addLog('응답 받음: ' + response.type, 'success');
+
+                // no-cors 모드에서는 response 내용을 읽을 수 없음
+                showStatus('✅ 데이터 전송 완료! 구글 시트를 확인하세요.', false);
+                addLog('전송 성공! 구글 시트 확인 필요', 'success');
+
+                // 폼 초기화
+                document.getElementById('testForm').reset();
+
+            } catch (error) {
+                addLog('에러 발생: ' + error.message, 'error');
+                showStatus('❌ 전송 실패: ' + error.message, true);
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.textContent = '테스트 전송';
+            }
+        });
+
+        // 페이지 로드 시
+        addLog('테스트 페이지 로드 완료', 'success');
+        addLog('구글 시트 URL: ' + GOOGLE_SCRIPT_URL, 'info');
+    </script>
+</body>
+</html>
