@@ -1,6 +1,5 @@
-import { NextRequest, NextResponse } from 'next/server';
-import axios from 'axios';
-import * as cheerio from 'cheerio';
+import { NextResponse } from 'next/server';
+import Parser from 'rss-parser';
 import fs from 'fs';
 import path from 'path';
 
@@ -15,107 +14,67 @@ interface NewsArticle {
 
 const NEWS_FILE_PATH = path.join(process.cwd(), 'public', 'dog-news.json');
 
-// Axios와 Cheerio를 사용한 한국애견신문 크롤링
-async function crawlNaverNewsWithPlaywright(): Promise<NewsArticle[]> {
+// RSS 파서를 사용한 한국애견신문 크롤링
+async function crawlKoreaDogNewsRSS(): Promise<NewsArticle[]> {
   const articles: NewsArticle[] = [];
 
   try {
-    console.log('한국애견신문 크롤링 시작...');
+    console.log('RSS 피드 크롤링 시작...');
 
-    // HTML 페이지 가져오기
-    const { data: html } = await axios.get('https://www.koreadognews.co.kr', {
-      headers: {
-        'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      },
-      timeout: 10000,
-    });
-
-    const $ = cheerio.load(html);
-
-    console.log('HTML 파싱 중...');
-
-    // 다양한 패턴으로 뉴스 링크 찾기
-    const newsLinks: Array<{ title: string; link: string; thumbnail?: string }> = [];
-
-    // 패턴 1: a 태그에서 title 속성이 있는 것
-    $('a[title]').each((_, el) => {
-      const $el = $(el);
-      const title = $el.attr('title')?.trim() || '';
-      const href = $el.attr('href') || '';
-
-      if (title && title.length > 10 && title.length < 200 && href) {
-        const link = href.startsWith('http')
-          ? href
-          : `https://www.koreadognews.co.kr${href.startsWith('/') ? '' : '/'}${href}`;
-
-        const img = $el.find('img').first();
-        const thumbnail = img.attr('src') || img.attr('data-src') || '';
-
-        newsLinks.push({
-          title,
-          link,
-          thumbnail: thumbnail.startsWith('http')
-            ? thumbnail
-            : thumbnail
-            ? `https://www.koreadognews.co.kr${thumbnail.startsWith('/') ? '' : '/'}${thumbnail}`
-            : undefined,
-        });
+    const parser = new Parser({
+      customFields: {
+        item: [
+          ['media:content', 'media'],
+          ['content:encoded', 'contentEncoded'],
+        ]
       }
     });
 
-    // 패턴 2: 뉴스 리스트 아이템
-    $('.list_article li, .article_list li, .news_list li').each((_, el) => {
-      const $el = $(el);
-      const $link = $el.find('a').first();
-      const title = $link.text().trim() || $link.attr('title')?.trim() || '';
-      const href = $link.attr('href') || '';
+    const feed = await parser.parseURL('https://www.koreadognews.co.kr/rss/');
 
-      if (title && title.length > 10 && title.length < 200 && href) {
-        const link = href.startsWith('http')
-          ? href
-          : `https://www.koreadognews.co.kr${href.startsWith('/') ? '' : '/'}${href}`;
+    console.log(`RSS 피드에서 ${feed.items.length}개의 뉴스 발견`);
 
-        const img = $el.find('img').first();
-        const thumbnail = img.attr('src') || img.attr('data-src') || '';
+    feed.items.forEach((item) => {
+      // 썸네일 이미지 추출 (content:encoded에서)
+      let thumbnail: string | undefined;
 
-        newsLinks.push({
-          title,
-          link,
-          thumbnail: thumbnail.startsWith('http')
-            ? thumbnail
-            : thumbnail
-            ? `https://www.koreadognews.co.kr${thumbnail.startsWith('/') ? '' : '/'}${thumbnail}`
-            : undefined,
-        });
+      if (item.contentEncoded) {
+        const imgMatch = item.contentEncoded.match(/<img[^>]+src="([^"]+)"/);
+        if (imgMatch) {
+          thumbnail = imgMatch[1];
+        }
       }
+
+      // description에서 HTML 태그 제거
+      let cleanDescription = item.content || item.contentSnippet || '';
+      cleanDescription = cleanDescription
+        .replace(/<[^>]+>/g, '')
+        .replace(/&amp;/g, '&')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&#\d+;/g, '')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, 200);
+
+      if (cleanDescription.length === 200) {
+        cleanDescription += '...';
+      }
+
+      articles.push({
+        title: item.title || '',
+        link: item.link || '',
+        source: '한국애견신문',
+        date: item.pubDate || item.isoDate || new Date().toISOString(),
+        thumbnail,
+        description: cleanDescription,
+      });
     });
 
-    console.log(`${newsLinks.length}개의 뉴스 링크 발견`);
-
-    // 중복 제거 및 유효한 뉴스만 추가
-    const seen = new Set<string>();
-
-    newsLinks.forEach((item) => {
-      if (item.title && item.link && !seen.has(item.link)) {
-        seen.add(item.link);
-        articles.push({
-          title: item.title.substring(0, 200),
-          link: item.link,
-          source: '한국애견신문',
-          date: new Date().toISOString(),
-          description: undefined,
-          thumbnail: item.thumbnail,
-        });
-      }
-    });
-
-    console.log(`총 ${articles.length}개의 애견 뉴스 기사 수집 완료`);
-
-    // 최대 50개 제한
+    console.log(`총 ${articles.length}개의 뉴스 기사 수집 완료`);
     return articles.slice(0, 50);
+
   } catch (error) {
-    console.error('크롤링 에러:', error);
-    // 에러 시 빈 배열 반환 (기본 뉴스는 POST에서 처리)
+    console.error('RSS 크롤링 에러:', error);
     return [];
   }
 }
@@ -251,13 +210,13 @@ export async function GET() {
   }
 }
 
-// POST: Playwright로 실제 뉴스 크롤링 및 업데이트
+// POST: RSS로 실제 뉴스 크롤링 및 업데이트
 export async function POST() {
   try {
-    console.log('=== 뉴스 크롤링 시작 (Playwright) ===');
+    console.log('=== 뉴스 크롤링 시작 (RSS) ===');
     const startTime = Date.now();
 
-    let articles = await crawlNaverNewsWithPlaywright();
+    let articles = await crawlKoreaDogNewsRSS();
 
     // 크롤링 결과가 없거나 5개 미만이면 기본 뉴스 사용
     if (articles.length < 5) {
