@@ -17,11 +17,23 @@ export default function NewsSection() {
   const [lastUpdated, setLastUpdated] = useState<string | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const fetchNews = async () => {
+  const fetchNews = async (forceUpdate = false) => {
     try {
       setLoading(true);
-      const response = await fetch('/api/news');
-      const data = await response.json();
+
+      // 뉴스 데이터 가져오기
+      let response = await fetch('/api/news');
+      let data = await response.json();
+
+      // 뉴스가 없거나 강제 업데이트인 경우 크롤링 트리거
+      if ((!data.articles || data.articles.length === 0) || forceUpdate) {
+        console.log('뉴스 크롤링 트리거...');
+        await fetch('/api/news', { method: 'POST' });
+        // 다시 데이터 가져오기
+        response = await fetch('/api/news');
+        data = await response.json();
+      }
+
       setArticles(data.articles || []);
       setLastUpdated(data.lastUpdated);
     } catch (error) {
@@ -163,7 +175,7 @@ export default function NewsSection() {
         {/* 새로고침 버튼 */}
         <div className="text-center mt-10">
           <button
-            onClick={fetchNews}
+            onClick={() => fetchNews(true)}
             disabled={loading}
             className="inline-flex items-center gap-2 px-6 py-3 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-700 text-white rounded-full font-medium transition-colors"
           >
