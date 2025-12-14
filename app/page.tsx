@@ -4,6 +4,7 @@ import Solution from '@/components/sections/Solution';
 import Process from '@/components/sections/Process';
 import Benefits from '@/components/sections/Benefits';
 import SocialProof from '@/components/sections/SocialProof';
+import NewsSection from '@/components/sections/NewsSection';
 import CTA from '@/components/sections/CTA';
 import Footer from '@/components/sections/Footer';
 
@@ -16,6 +17,7 @@ export default function Home() {
       <Process />
       <Benefits />
       <SocialProof />
+      <NewsSection />
       <CTA />
       <Footer />
     </div>
