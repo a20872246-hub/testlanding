@@ -7,6 +7,8 @@ import { Check, Clock, Users, Phone, MessageCircle, ArrowLeft, Star, CreditCard 
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { createConsultation } from '@/lib/services/consultations';
+import ReviewList from '@/components/reviews/ReviewList';
+import ReviewForm from '@/components/reviews/ReviewForm';
 
 const productData = {
   name: '집중 교정 프로그램',
@@ -47,6 +49,8 @@ export default function IntensiveProductPage() {
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
+  const [showReviewForm, setShowReviewForm] = useState(false);
+  const [reviewKey, setReviewKey] = useState(0);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -268,6 +272,35 @@ export default function IntensiveProductPage() {
                   ))}
                 </div>
               </div>
+            </div>
+          </div>
+        </section>
+
+        {/* Reviews Section */}
+        <section className="py-16 bg-gradient-to-b from-black to-purple-950/10">
+          <div className="container mx-auto px-4">
+            <div className="max-w-6xl mx-auto">
+              <h2 className="text-3xl font-bold text-white mb-8">고객 후기</h2>
+
+              {showReviewForm ? (
+                <div className="mb-8">
+                  <ReviewForm
+                    productSlug="intensive"
+                    productName={productData.name}
+                    onSuccess={() => {
+                      setShowReviewForm(false);
+                      setReviewKey(prev => prev + 1);
+                    }}
+                    onCancel={() => setShowReviewForm(false)}
+                  />
+                </div>
+              ) : null}
+
+              <ReviewList
+                key={reviewKey}
+                productSlug="intensive"
+                onWriteReview={() => setShowReviewForm(true)}
+              />
             </div>
           </div>
         </section>
