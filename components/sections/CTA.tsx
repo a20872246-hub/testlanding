@@ -6,6 +6,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Card } from '@/components/ui/card';
 import { CheckCircle2, Loader2 } from 'lucide-react';
+import { createConsultation } from '@/lib/services/consultations';
 
 export default function CTA() {
   const [formData, setFormData] = useState({
@@ -23,32 +24,21 @@ export default function CTA() {
     setIsSubmitting(true);
 
     try {
-      // Google Apps Script Web App URL
-      const GOOGLE_SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbybrlI_nwI5Q6uVUyCJmhkQP8PpCPAeyyiNwhQn2Wo0UduraMCBcHbpQytz_FXjj0nW/exec';
+      console.log('📤 Firebase 전송 데이터:', formData);
 
-      const payload = {
+      // Firebase에 상담 신청 저장
+      const result = await createConsultation({
         name: formData.name,
         email: formData.email,
         phone: formData.phone,
         dogBreed: formData.dogBreed,
-        issue: formData.issue,
-        timestamp: new Date().toISOString(),
-      };
-
-      console.log('📤 전송 데이터:', payload);
-
-      const response = await fetch(GOOGLE_SCRIPT_URL, {
-        method: 'POST',
-        mode: 'no-cors',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(payload),
+        message: formData.issue,
+        product: '무료 상담',
+        productSlug: 'free-consultation',
       });
 
-      console.log('✅ 전송 완료:', response);
+      console.log('✅ Firebase 저장 완료:', result);
 
-      // no-cors 모드에서는 response를 읽을 수 없으므로 성공으로 간주
       setIsSubmitted(true);
       setFormData({
         name: '',
@@ -58,7 +48,7 @@ export default function CTA() {
         issue: '',
       });
     } catch (error) {
-      console.error('❌ 전송 에러:', error);
+      console.error('❌ Firebase 저장 에러:', error);
       alert('신청 중 오류가 발생했습니다. 다시 시도해주세요.');
     } finally {
       setIsSubmitting(false);

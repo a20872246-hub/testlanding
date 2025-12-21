@@ -32,7 +32,7 @@ export default function Solution() {
   ];
 
   return (
-    <section className="py-20 bg-gradient-to-b from-purple-950/10 to-black">
+    <section id="about" className="py-20 bg-gradient-to-b from-purple-950/10 to-black">
       <div className="container mx-auto px-4">
         <div className="max-w-6xl mx-auto">
           {/* Section Header */}
